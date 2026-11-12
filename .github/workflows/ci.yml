@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Test on ${{ matrix.device }} simulator
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Pick a simulator
+        id: simulator
+        run: |
+          udid=$(xcrun simctl list devices available | grep "${{ matrix.device }}" | grep -Eo '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -n 1)
+          test -n "$udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Test
+        run: xcodebuild test -scheme JailbreakDetector-Package -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}"
+
+  build:
+    name: Build for device
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build
+        run: xcodebuild build -scheme JailbreakDetector-Package -destination "generic/platform=iOS" -configuration Release
