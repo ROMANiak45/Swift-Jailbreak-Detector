@@ -29,6 +29,13 @@ struct FakeLowLevelProbe: LowLevelProbe {
     func isLoopbackPortOpen(_ port: UInt16) -> Bool { openPorts.contains(port) }
 }
 
+extension JailbreakCheck {
+    /// Runs the check with the built-in indicators.
+    func run() -> [JailbreakReport.Finding] {
+        run(JailbreakCheckContext(indicators: .builtIn))
+    }
+}
+
 @Suite struct DirectSyscallCheckTests {
     private func findings(_ probe: FakeLowLevelProbe) -> [JailbreakReport.Finding] {
         DirectSyscallCheck(probe: probe).run()

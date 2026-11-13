@@ -36,7 +36,7 @@ import Testing
     private struct StubCheck: JailbreakCheck {
         let id = JailbreakCheckID(rawValue: "stub")
 
-        func run() -> [JailbreakReport.Finding] {
+        func run(_ context: JailbreakCheckContext) -> [JailbreakReport.Finding] {
             [JailbreakReport.Finding(check: id, confidence: .definitive, detail: "stub")]
         }
     }
