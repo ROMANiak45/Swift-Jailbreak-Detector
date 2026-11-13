@@ -9,8 +9,8 @@
 struct FileArtifactCheck: SystemCheck {
     let id = JailbreakCheckID.fileArtifacts
 
-    func findings(using probe: any SystemProbe) -> [JailbreakReport.Finding] {
-        JailbreakIndicators.files
+    func findings(using probe: any SystemProbe, indicators: IndicatorSet) -> [JailbreakReport.Finding] {
+        indicators.files
             .filter { probe.fileExists(atPath: $0.path) }
             .map { JailbreakReport.Finding(check: id, confidence: $0.confidence, detail: $0.path) }
     }
