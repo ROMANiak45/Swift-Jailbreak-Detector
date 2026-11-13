@@ -17,7 +17,7 @@ struct FunctionPrologueCheck: JailbreakCheck {
     let id = JailbreakCheckID.functionPrologues
     var probe: any LowLevelProbe = DarwinLowLevelProbe()
 
-    func run() -> [JailbreakReport.Finding] {
+    func run(_ context: JailbreakCheckContext) -> [JailbreakReport.Finding] {
         Self.watchedFunctions
             .filter { probe.functionStartsWithTrampoline($0) }
             .map { JailbreakReport.Finding(check: id, confidence: .suspicious, detail: $0) }
