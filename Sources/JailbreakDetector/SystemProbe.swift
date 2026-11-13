@@ -47,5 +47,5 @@ protocol URLSchemeProbe: Sendable {
 /// A built-in check that reads the system through a probe.
 protocol SystemCheck: Sendable {
     var id: JailbreakCheckID { get }
-    func findings(using probe: any SystemProbe) -> [JailbreakReport.Finding]
+    func findings(using probe: any SystemProbe, indicators: IndicatorSet) -> [JailbreakReport.Finding]
 }
