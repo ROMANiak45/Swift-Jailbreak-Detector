@@ -14,5 +14,15 @@ public protocol JailbreakCheck: Sendable {
     var id: JailbreakCheckID { get }
 
     /// Inspects the system and returns one finding per indicator observed, or an empty array.
-    func run() -> [JailbreakReport.Finding]
+    func run(_ context: JailbreakCheckContext) -> [JailbreakReport.Finding]
+}
+
+/// What an evaluation passes to each additional check.
+public struct JailbreakCheckContext: Sendable {
+    /// The indicators the evaluation was configured with.
+    public let indicators: IndicatorSet
+
+    public init(indicators: IndicatorSet) {
+        self.indicators = indicators
+    }
 }
