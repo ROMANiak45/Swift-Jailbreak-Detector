@@ -5,6 +5,8 @@
 //  Created by Roman Croitor on 12.11.2026.
 //
 
+import Foundation
+
 /// The outcome of a jailbreak evaluation.
 ///
 /// The report keeps every individual finding so that a backend can score risk itself instead of relying on
@@ -61,11 +63,22 @@ public struct JailbreakReport: Sendable, Hashable, Codable {
     public let environment: Environment
     /// Every indicator that was observed, in the order the checks ran.
     public let findings: [Finding]
+    /// The version of the indicator set the checks used.
+    public let indicatorVersion: Int
+    /// The value the server issued for this evaluation, which lets it reject a replayed report.
+    public let nonce: Data?
 
     /// Creates a report and derives its verdict from the findings.
-    public init(environment: Environment, findings: [Finding]) {
+    public init(
+        environment: Environment,
+        findings: [Finding],
+        indicatorVersion: Int = IndicatorSet.builtIn.version,
+        nonce: Data? = nil
+    ) {
         self.environment = environment
         self.findings = findings
+        self.indicatorVersion = indicatorVersion
+        self.nonce = nonce
         if findings.contains(where: { $0.confidence == .definitive }) {
             verdict = .jailbroken
         } else if findings.isEmpty {
