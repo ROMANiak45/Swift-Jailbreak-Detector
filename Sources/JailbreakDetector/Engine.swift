@@ -24,12 +24,13 @@ struct Engine: Sendable {
         HookIntegrityCheck(),
     ]
 
-    func evaluate(_ configuration: JailbreakDetector.Configuration) -> JailbreakReport {
-        report(systemFindings(configuration) + additionalFindings(configuration), configuration)
+    func evaluate(_ configuration: JailbreakDetector.Configuration, nonce: Data? = nil) -> JailbreakReport {
+        report(systemFindings(configuration) + additionalFindings(configuration), configuration, nonce)
     }
 
     func evaluate(
         _ configuration: JailbreakDetector.Configuration,
+        nonce: Data? = nil,
         urlSchemeProbe: any URLSchemeProbe
     ) async -> JailbreakReport {
         var findings = systemFindings(configuration)
@@ -37,7 +38,7 @@ struct Engine: Sendable {
         if environment == .device, configuration.checks.contains(urlSchemeCheck.id) {
             findings += await urlSchemeCheck.findings(using: urlSchemeProbe, indicators: configuration.indicators)
         }
-        return report(findings + additionalFindings(configuration), configuration)
+        return report(findings + additionalFindings(configuration), configuration, nonce)
     }
 
     private func systemFindings(_ configuration: JailbreakDetector.Configuration) -> [JailbreakReport.Finding] {
@@ -55,7 +56,8 @@ struct Engine: Sendable {
 
     private func report(
         _ findings: [JailbreakReport.Finding],
-        _ configuration: JailbreakDetector.Configuration
+        _ configuration: JailbreakDetector.Configuration,
+        _ nonce: Data?
     ) -> JailbreakReport {
         var findings = findings
         if environment == .simulator, configuration.simulatorPolicy == .reportJailbroken {
@@ -65,7 +67,12 @@ struct Engine: Sendable {
                 detail: "Simulator reported as jailbroken by configuration"
             ))
         }
-        return JailbreakReport(environment: environment, findings: findings)
+        return JailbreakReport(
+            environment: environment,
+            findings: findings,
+            indicatorVersion: configuration.indicators.version,
+            nonce: nonce
+        )
     }
 }
 
