@@ -154,6 +154,20 @@ struct FakeURLSchemeProbe: URLSchemeProbe {
     }
 }
 
+extension SystemCheck {
+    /// Runs the check with the built-in indicators.
+    func findings(using probe: any SystemProbe) -> [JailbreakReport.Finding] {
+        findings(using: probe, indicators: .builtIn)
+    }
+}
+
+extension URLSchemeCheck {
+    /// Runs the check with the built-in indicators.
+    @MainActor func findings(using probe: any URLSchemeProbe) -> [JailbreakReport.Finding] {
+        findings(using: probe, indicators: .builtIn)
+    }
+}
+
 extension [JailbreakReport.Finding] {
     /// The details of the findings with the given confidence.
     func details(_ confidence: JailbreakReport.Confidence) -> [String] {

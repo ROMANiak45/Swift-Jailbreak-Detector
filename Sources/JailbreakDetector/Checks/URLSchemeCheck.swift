@@ -15,9 +15,10 @@ struct URLSchemeCheck: Sendable {
     let id = JailbreakCheckID.urlSchemes
 
     @MainActor
-    func findings(using probe: any URLSchemeProbe) -> [JailbreakReport.Finding] {
+    func findings(using probe: any URLSchemeProbe, indicators: IndicatorSet) -> [JailbreakReport.Finding] {
         let declared = Set(probe.declaredQuerySchemes().map { $0.lowercased() })
-        return JailbreakIndicators.urlSchemes
+        return indicators.urlSchemes
+            .map { $0.lowercased() }
             .filter { declared.contains($0) }
             .compactMap { scheme in
                 guard let url = URL(string: "\(scheme)://"), probe.canOpen(url) else { return nil }

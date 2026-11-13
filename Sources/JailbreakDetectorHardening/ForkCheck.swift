@@ -12,7 +12,7 @@ struct ForkCheck: JailbreakCheck {
     let id = JailbreakCheckID.fork
     var probe: any LowLevelProbe = DarwinLowLevelProbe()
 
-    func run() -> [JailbreakReport.Finding] {
+    func run(_ context: JailbreakCheckContext) -> [JailbreakReport.Finding] {
         guard probe.forkSucceeds() else { return [] }
         return [JailbreakReport.Finding(check: id, confidence: .definitive, detail: "fork() succeeded")]
     }

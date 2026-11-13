@@ -13,8 +13,9 @@
 struct HookIntegrityCheck: SystemCheck {
     let id = JailbreakCheckID.hookIntegrity
 
-    func findings(using probe: any SystemProbe) -> [JailbreakReport.Finding] {
+    func findings(using probe: any SystemProbe, indicators: IndicatorSet) -> [JailbreakReport.Finding] {
         let trust = ImageTrust(mainBundlePath: probe.mainBundlePath)
+        let matcher = ImageMatcher(indicators)
         return probe.functionOrigins().compactMap { origin in
             guard let image = origin.imagePath else {
                 return JailbreakReport.Finding(
@@ -23,7 +24,7 @@ struct HookIntegrityCheck: SystemCheck {
                     detail: "\(origin.name) -> outside any loaded image"
                 )
             }
-            if JailbreakIndicators.isInjectedImage(image) {
+            if matcher.matches(image) {
                 return JailbreakReport.Finding(check: id, confidence: .definitive, detail: "\(origin.name) -> \(image)")
             }
             if !trust.isTrusted(image) {

@@ -12,10 +12,11 @@
 struct LoadedImageCheck: SystemCheck {
     let id = JailbreakCheckID.loadedImages
 
-    func findings(using probe: any SystemProbe) -> [JailbreakReport.Finding] {
+    func findings(using probe: any SystemProbe, indicators: IndicatorSet) -> [JailbreakReport.Finding] {
         let trust = ImageTrust(mainBundlePath: probe.mainBundlePath)
+        let matcher = ImageMatcher(indicators)
         return probe.loadedImagePaths().compactMap { image in
-            if JailbreakIndicators.isInjectedImage(image) {
+            if matcher.matches(image) {
                 return JailbreakReport.Finding(check: id, confidence: .definitive, detail: image)
             }
             if !image.isEmpty, !trust.isTrusted(image) {

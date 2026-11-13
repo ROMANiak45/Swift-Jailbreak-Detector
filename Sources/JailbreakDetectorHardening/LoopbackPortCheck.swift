@@ -17,7 +17,7 @@ struct LoopbackPortCheck: JailbreakCheck {
     let id = JailbreakCheckID.loopbackPorts
     var probe: any LowLevelProbe = DarwinLowLevelProbe()
 
-    func run() -> [JailbreakReport.Finding] {
+    func run(_ context: JailbreakCheckContext) -> [JailbreakReport.Finding] {
         Self.watchedPorts
             .filter { probe.isLoopbackPortOpen($0) }
             .map { JailbreakReport.Finding(check: id, confidence: .suspicious, detail: "127.0.0.1:\($0)") }

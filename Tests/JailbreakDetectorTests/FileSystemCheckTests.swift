@@ -74,6 +74,45 @@ import Testing
         #expect(check.findings(using: FakeSystemProbe.clean).isEmpty)
     }
 
+    @Test(arguments: [
+        "/", "/private/", "/private/var/", "/private/var/mobile/", "/private/var/root/",
+        "/Applications/", "/Library/", "/usr/", "/bin/",
+    ])
+    func everyWriteTargetIsProbedAndDefinitive(directory: String) {
+        var probe = FakeSystemProbe()
+        probe.writableDirectories = [directory]
+        #expect(check.findings(using: probe) == [
+            JailbreakReport.Finding(check: .sandboxEscape, confidence: .definitive, detail: directory),
+        ])
+    }
+
+    @Test func probeFileNamesAreUniqueAndHidden() {
+        final class Recorder: @unchecked Sendable {
+            var paths: [String] = []
+        }
+        struct RecordingProbe: SystemProbe {
+            let recorder: Recorder
+            var mainBundlePath: String { FakeSystemProbe.bundlePath }
+            func fileExists(atPath path: String) -> Bool { false }
+            func symbolicLinkDestination(atPath path: String) -> String? { nil }
+            func directoryEntries(atPath path: String) -> [String]? { nil }
+            func canCreateFile(atPath path: String) -> Bool {
+                recorder.paths.append(path)
+                return false
+            }
+            func loadedImagePaths() -> [String] { [] }
+            func environmentValue(named name: String) -> String? { nil }
+            func functionOrigins() -> [FunctionOrigin] { [] }
+        }
+
+        let recorder = Recorder()
+        _ = check.findings(using: RecordingProbe(recorder: recorder))
+        _ = check.findings(using: RecordingProbe(recorder: recorder))
+        let names = recorder.paths.compactMap { $0.split(separator: "/").last.map(String.init) }
+        #expect(names.allSatisfy { $0.hasPrefix(".jailbreak-detector-") })
+        #expect(Set(names).count == 2)
+    }
+
     @Test func writableDirectoryOutsideTheContainerIsDefinitive() {
         let findings = check.findings(using: FakeSystemProbe.rootful)
         #expect(findings == [
@@ -99,6 +138,33 @@ import Testing
                 detail: "/private/var/mobile/Library/Preferences"
             ),
         ])
+    }
+
+    @Test(arguments: IndicatorSet.builtIn.restrictedDirectories)
+    func everyBuiltInRestrictedDirectoryIsOnlySuspicious(directory: String) {
+        var probe = FakeSystemProbe()
+        probe.directories = [directory: ["entry"]]
+        #expect(check.findings(using: probe) == [
+            JailbreakReport.Finding(check: .restrictedDirectories, confidence: .suspicious, detail: directory),
+        ])
+    }
+
+    @Test func builtInRestrictedDirectoriesIncludeTheSystemFolders() {
+        #expect(Set(IndicatorSet.builtIn.restrictedDirectories).isSuperset(of: [
+            "/private/var/root",
+            "/private/var/mobile",
+            "/private/var/mobile/Library",
+            "/private/var/db",
+            "/private/var/log",
+        ]))
+        #expect(!IndicatorSet.builtIn.restrictedDirectories.contains("/"))
+    }
+
+    @Test func customRestrictedDirectoriesReplaceTheBuiltInOnes() {
+        var probe = FakeSystemProbe()
+        probe.directories = ["/private/var/root": [], "/private/var/custom": []]
+        let findings = check.findings(using: probe, indicators: IndicatorSet(restrictedDirectories: ["/private/var/custom"]))
+        #expect(findings.map(\.detail) == ["/private/var/custom"])
     }
 
     @Test func roothideRootIsDefinitive() {

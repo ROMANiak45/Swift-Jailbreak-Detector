@@ -16,6 +16,8 @@ struct FakeLowLevelProbe: LowLevelProbe {
     var libcPaths: Set<String> = []
     var kernelLinks: [String: String] = [:]
     var libcLinks: [String: String] = [:]
+    var kernelDirectories: Set<String> = []
+    var foundationDirectories: Set<String> = []
     var trampolines: Set<String> = []
     var canFork = false
     var openPorts: Set<UInt16> = []
@@ -24,9 +26,18 @@ struct FakeLowLevelProbe: LowLevelProbe {
     func libcFileExists(atPath path: String) -> Bool { libcPaths.contains(path) }
     func directSymbolicLinkDestination(atPath path: String) -> String? { kernelLinks[path] }
     func libcSymbolicLinkDestination(atPath path: String) -> String? { libcLinks[path] }
+    func directCanOpenDirectory(atPath path: String) -> Bool { kernelDirectories.contains(path) }
+    func foundationCanListDirectory(atPath path: String) -> Bool { foundationDirectories.contains(path) }
     func functionStartsWithTrampoline(_ symbol: String) -> Bool { trampolines.contains(symbol) }
     func forkSucceeds() -> Bool { canFork }
     func isLoopbackPortOpen(_ port: UInt16) -> Bool { openPorts.contains(port) }
+}
+
+extension JailbreakCheck {
+    /// Runs the check with the built-in indicators.
+    func run() -> [JailbreakReport.Finding] {
+        run(JailbreakCheckContext(indicators: .builtIn))
+    }
 }
 
 @Suite struct DirectSyscallCheckTests {
@@ -78,6 +89,46 @@ struct FakeLowLevelProbe: LowLevelProbe {
                 confidence: .definitive,
                 detail: "/var/jb -> /private/preboot/3A9F/jb-x1Y2z3/procursus (hidden from libc)"
             ),
+        ])
+    }
+
+    @Test func restrictedDirectoryVisibleToFoundationIsSuspicious() {
+        let directories: Set = ["/private/var/root"]
+        let result = findings(FakeLowLevelProbe(kernelDirectories: directories, foundationDirectories: directories))
+        #expect(result == [
+            JailbreakReport.Finding(check: .directSyscalls, confidence: .suspicious, detail: "/private/var/root"),
+        ])
+    }
+
+    @Test func restrictedDirectoryHiddenFromFoundationIsDefinitive() {
+        let result = findings(FakeLowLevelProbe(kernelDirectories: ["/private/var/log"]))
+        #expect(result == [
+            JailbreakReport.Finding(
+                check: .directSyscalls,
+                confidence: .definitive,
+                detail: "/private/var/log (hidden from Foundation)"
+            ),
+        ])
+    }
+
+    @Test func pathsComeFromTheCheckContext() {
+        let probe = FakeLowLevelProbe(
+            kernelPaths: ["/var/private-marker", "/var/jb"],
+            libcPaths: ["/var/private-marker", "/var/jb"],
+            kernelLinks: ["/private/var/private-link": "/elsewhere"],
+            libcLinks: ["/private/var/private-link": "/elsewhere"],
+            kernelDirectories: ["/private/var/private-directory", "/private/var/root"]
+        )
+        let indicators = IndicatorSet(
+            files: [IndicatorSet.PathIndicator(path: "/var/private-marker", confidence: .definitive)],
+            symbolicLinks: [IndicatorSet.PathIndicator(path: "/private/var/private-link", confidence: .suspicious)],
+            restrictedDirectories: ["/private/var/private-directory"]
+        )
+        let result = DirectSyscallCheck(probe: probe).run(JailbreakCheckContext(indicators: indicators))
+        #expect(result.map(\.detail) == [
+            "/var/private-marker",
+            "/private/var/private-link -> /elsewhere",
+            "/private/var/private-directory (hidden from Foundation)",
         ])
     }
 
