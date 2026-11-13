@@ -11,8 +11,8 @@
 struct SymbolicLinkCheck: SystemCheck {
     let id = JailbreakCheckID.symbolicLinks
 
-    func findings(using probe: any SystemProbe) -> [JailbreakReport.Finding] {
-        JailbreakIndicators.symbolicLinks.compactMap { indicator in
+    func findings(using probe: any SystemProbe, indicators: IndicatorSet) -> [JailbreakReport.Finding] {
+        indicators.symbolicLinks.compactMap { indicator in
             guard let destination = probe.symbolicLinkDestination(atPath: indicator.path) else { return nil }
             return JailbreakReport.Finding(
                 check: id,
