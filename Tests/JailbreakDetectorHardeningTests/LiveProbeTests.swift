@@ -79,7 +79,17 @@ private enum Instruction {
         #expect(probe.libcSymbolicLinkDestination(atPath: NSTemporaryDirectory()) == nil)
     }
 
+    @Test func foundationListsExistingDirectoriesOnly() {
+        #expect(probe.foundationCanListDirectory(atPath: NSTemporaryDirectory()))
+        #expect(!probe.foundationCanListDirectory(atPath: temporaryPath()))
+    }
+
     #if arch(arm64)
+    @Test func directSyscallsOpenExistingDirectoriesOnly() {
+        #expect(probe.directCanOpenDirectory(atPath: NSTemporaryDirectory()))
+        #expect(!probe.directCanOpenDirectory(atPath: temporaryPath()))
+    }
+
     @Test func directSyscallsAreSupported() {
         #expect(probe.supportsDirectSyscalls)
     }
