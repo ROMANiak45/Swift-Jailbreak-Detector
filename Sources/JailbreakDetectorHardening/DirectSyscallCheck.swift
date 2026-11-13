@@ -15,27 +15,27 @@ struct DirectSyscallCheck: JailbreakCheck {
     let id = JailbreakCheckID.directSyscalls
     var probe: any LowLevelProbe = DarwinLowLevelProbe()
 
-    func run() -> [JailbreakReport.Finding] {
+    func run(_ context: JailbreakCheckContext) -> [JailbreakReport.Finding] {
         guard probe.supportsDirectSyscalls else { return [] }
-        return fileFindings() + symbolicLinkFindings()
+        return fileFindings(context.indicators) + symbolicLinkFindings(context.indicators)
     }
 
-    private func fileFindings() -> [JailbreakReport.Finding] {
-        JailbreakIndicators.files.compactMap { indicator in
+    private func fileFindings(_ indicators: IndicatorSet) -> [JailbreakReport.Finding] {
+        indicators.files.compactMap { indicator in
             guard probe.directFileExists(atPath: indicator.path) else { return nil }
             return finding(
-                for: indicator,
+                confidence: indicator.confidence,
                 detail: indicator.path,
                 hiddenFromLibc: !probe.libcFileExists(atPath: indicator.path)
             )
         }
     }
 
-    private func symbolicLinkFindings() -> [JailbreakReport.Finding] {
-        JailbreakIndicators.symbolicLinks.compactMap { indicator in
+    private func symbolicLinkFindings(_ indicators: IndicatorSet) -> [JailbreakReport.Finding] {
+        indicators.symbolicLinks.compactMap { indicator in
             guard let destination = probe.directSymbolicLinkDestination(atPath: indicator.path) else { return nil }
             return finding(
-                for: indicator,
+                confidence: indicator.confidence,
                 detail: "\(indicator.path) -> \(destination)",
                 hiddenFromLibc: probe.libcSymbolicLinkDestination(atPath: indicator.path) == nil
             )
@@ -43,13 +43,13 @@ struct DirectSyscallCheck: JailbreakCheck {
     }
 
     private func finding(
-        for indicator: JailbreakIndicators.Path,
+        confidence: JailbreakReport.Confidence,
         detail: String,
         hiddenFromLibc: Bool
     ) -> JailbreakReport.Finding {
         if hiddenFromLibc {
             return JailbreakReport.Finding(check: id, confidence: .definitive, detail: "\(detail) (hidden from libc)")
         }
-        return JailbreakReport.Finding(check: id, confidence: indicator.confidence, detail: detail)
+        return JailbreakReport.Finding(check: id, confidence: confidence, detail: detail)
     }
 }
