@@ -35,7 +35,7 @@ struct Engine: Sendable {
         var findings = systemFindings(configuration)
         let urlSchemeCheck = URLSchemeCheck()
         if environment == .device, configuration.checks.contains(urlSchemeCheck.id) {
-            findings += await urlSchemeCheck.findings(using: urlSchemeProbe)
+            findings += await urlSchemeCheck.findings(using: urlSchemeProbe, indicators: configuration.indicators)
         }
         return report(findings + additionalFindings(configuration), configuration)
     }
@@ -44,12 +44,13 @@ struct Engine: Sendable {
         guard environment == .device else { return [] }
         return Self.systemChecks
             .filter { configuration.checks.contains($0.id) }
-            .flatMap { $0.findings(using: probe) }
+            .flatMap { $0.findings(using: probe, indicators: configuration.indicators) }
     }
 
     private func additionalFindings(_ configuration: JailbreakDetector.Configuration) -> [JailbreakReport.Finding] {
         guard environment == .device else { return [] }
-        return configuration.additionalChecks.flatMap { $0.run() }
+        let context = JailbreakCheckContext(indicators: configuration.indicators)
+        return configuration.additionalChecks.flatMap { $0.run(context) }
     }
 
     private func report(
