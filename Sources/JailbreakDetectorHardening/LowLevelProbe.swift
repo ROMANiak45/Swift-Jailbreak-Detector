@@ -7,6 +7,7 @@
 
 import CJailbreakProbes
 import Darwin
+import Foundation
 
 /// The low-level view of the system that the hardening checks read. Tests substitute a fake.
 protocol LowLevelProbe: Sendable {
@@ -21,6 +22,10 @@ protocol LowLevelProbe: Sendable {
     func directSymbolicLinkDestination(atPath path: String) -> String?
     /// The destination of the symbolic link at the path, read through libc.
     func libcSymbolicLinkDestination(atPath path: String) -> String?
+    /// Whether the kernel, asked directly, lets the process open the directory for reading.
+    func directCanOpenDirectory(atPath path: String) -> Bool
+    /// Whether Foundation can list the directory.
+    func foundationCanListDirectory(atPath path: String) -> Bool
     /// Whether the named function starts with a jump to somewhere else.
     func functionStartsWithTrampoline(_ symbol: String) -> Bool
     /// Whether the process is allowed to fork.
@@ -54,6 +59,14 @@ struct DarwinLowLevelProbe: LowLevelProbe {
 
     func libcSymbolicLinkDestination(atPath path: String) -> String? {
         Self.string { buffer, size in readlink(path, buffer, size) }
+    }
+
+    func directCanOpenDirectory(atPath path: String) -> Bool {
+        jbp_direct_open(path) == 1
+    }
+
+    func foundationCanListDirectory(atPath path: String) -> Bool {
+        (try? FileManager.default.contentsOfDirectory(atPath: path)) != nil
     }
 
     func functionStartsWithTrampoline(_ symbol: String) -> Bool {
